@@ -8,6 +8,9 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round">
+        <activity android:name=".PermissionDialog"
+            android:theme="@android:style/Theme.DeviceDefault.Light.Dialog"
+            android:excludeFromRecents="true" />
         <receiver
             android:name="com.draco.dfw.Exec"
             android:enabled="true"

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DFW</string>
+    <string name="grant">Grant</string>
+    <string name="deny">Deny</string>
 </resources>

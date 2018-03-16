@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
+import com.draco.dfw.commands.immersive
+import com.draco.dfw.commands.settings
 
 class Exec : BroadcastReceiver() {
 
@@ -13,35 +15,72 @@ class Exec : BroadcastReceiver() {
     am broadcast -a wm --es size "1080x2220" --es density "480" --es overscan "50,50,50,50" -n com.draco.dfw/.Exec
      */
 
-    private val _wm = wm()
+    companion object {
+        var permissionGranted: Boolean? = null
+    }
+
+    private lateinit var _wm: wm
+    private lateinit var _immersive: immersive
+    private lateinit var _settings: settings
 
     override fun onReceive(context: Context, intent: Intent) {
+        Log.d("BroadcastReceived", intent.action)
+
+        // TODO: add a permission verification method
+        val i = Intent(context, PermissionDialog::class.java).apply {
+            if (intent.`package` == null) {
+                putExtra("message", "Shell has requested runtime.")
+            } else {
+                putExtra("message", intent.`package` + " has requested runtime.")
+            }
+        }
+
+        context.startActivity(i)
+
+        // TODO fix this garbage to not lock up the main thread
+        while (permissionGranted == null) { }
+        if (permissionGranted == false) return
+        Log.d("PERMISSION", "GRANTED")
+        permissionGranted = null
+
+        // set primary command classes
+        _immersive = immersive(context.contentResolver)
+        _wm = wm()
+        _settings = settings(context.contentResolver)
 
         // check permissions and deliver warning
         val ungrantedPerms = Permissions.check(context, context.packageManager)
         if (ungrantedPerms.isNotEmpty()) {
             Toast.makeText(context, "[DFW] Permissions missing: " + ungrantedPerms.toString(), Toast.LENGTH_LONG).show()
+            Log.d("PermissionsMissing", "[DFW] Permissions missing: " + ungrantedPerms.toString())
             resultCode = RESULT_ERROR
             resultData = "MISSING PERMISSIONS: " + ungrantedPerms.toString()
             return
         }
 
-        // prevent crashes when intent is sent without command
+        // show command help
         if  (intent.extras == null) {
-            resultCode = RESULT_ERROR
+            when (intent.action) {
+                "wm" -> resultData = _wm.help()
+                "immersive" -> resultData = _immersive.help()
+                "settings" -> resultData = _settings.help()
+            }
+            resultCode = RESULT_NEUTRAL
             return
         }
 
         // grab all possible parameters
-        val extraDensity = intent.extras.getString("density")
-        val extraSize = intent.extras.getString("size")
-        val extraOverscan = intent.extras.getString("overscan")
-
-        Log.d("onReceive", "Intent received")
+        val extraType = intent.extras.getString(EXTRA_TYPE)
+        val extraDensity = intent.extras.getString(EXTRA_DENSITY)
+        val extraSize = intent.extras.getString(EXTRA_SIZE)
+        val extraOverscan = intent.extras.getString(EXTRA_OVERSCAN)
+        val extraNamespace = intent.extras.getString(EXTRA_NAMESPACE)
+        val extraPut = intent.extras.getString(EXTRA_PUT)
+        val extraGet = intent.extras.getString(EXTRA_GET)
+        val extraValue = intent.extras.getString(EXTRA_VALUE)
 
         // check primary function
         if (intent.action == "wm") {
-            Log.d("WM", "WM sent")
             if (extraDensity != null) {
                 _wm.density(extraDensity)
                 resultCode = RESULT_OK
@@ -54,6 +93,30 @@ class Exec : BroadcastReceiver() {
 
             if (extraOverscan != null) {
                 _wm.overscan(extraOverscan)
+                resultCode = RESULT_OK
+            }
+        }
+
+        if (intent.action == "immersive") {
+            when (extraType) {
+                "default" -> _immersive.set(IMMERSIVE_DEFAULT)
+                "none" -> _immersive.set(IMMERSIVE_NONE)
+                "nav" -> _immersive.set(IMMERSIVE_NAV)
+                "status" -> _immersive.set(IMMERSIVE_STATUS)
+                "full" -> _immersive.set(IMMERSIVE_FULL)
+            }
+        }
+
+        if (intent.action == "settings") {
+            if (extraNamespace != null) {
+                _settings.namespace(extraNamespace)
+            }
+
+            if (extraPut != null && extraValue != null) {
+                _settings.put(extraPut, extraValue)
+                resultCode = RESULT_OK
+            } else if (extraGet != null) {
+                resultData = _settings.get(extraGet)
                 resultCode = RESULT_OK
             }
         }

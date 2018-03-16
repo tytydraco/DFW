@@ -5,10 +5,6 @@ import android.os.Build
 import android.view.Display
 import java.util.*
 
-/**
- * Created by Draco on 3/15/2018.
- */
-
 class wm {
     fun size(s: String) {
         wmPrivate.wmSize(s)
@@ -25,6 +21,13 @@ class wm {
     fun overscan(o: String) {
         wmPrivate.wmOverscan(o)
     }
+
+    fun help(): String {
+        return "HELP:\n" +
+                "density \"<INT>\"\n" +
+                "size \"<WIDTH>x<HEIGHT>\"\n" +
+                "overscan \"<LEFT>,<TOP>,<RIGHT>,<BOTTOM>\""
+    }
 }
 
 class wmPrivate {
@@ -32,7 +35,7 @@ class wmPrivate {
     companion object {
         @SuppressLint("PrivateApi")
         @Throws(Exception::class)
-        fun getWindowManagerService(): Any {
+        private fun getWindowManagerService(): Any {
             return Class.forName("android.view.WindowManagerGlobal")
                     .getMethod("getWindowManagerService")
                     .invoke(null)
