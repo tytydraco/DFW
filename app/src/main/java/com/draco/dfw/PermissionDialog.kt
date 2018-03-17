@@ -25,10 +25,12 @@ class PermissionDialog: Activity() {
 
         grant.setOnClickListener {
             Exec.permissionGranted = true
+            finish()
         }
 
         deny.setOnClickListener {
             Exec.permissionGranted = false
+            finish()
         }
     }
 }

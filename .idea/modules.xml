@@ -2,10 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/DFW.iml" filepath="$PROJECT_DIR$/DFW.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/dfw.iml" filepath="$PROJECT_DIR$/dfw.iml" />
-      <module fileurl="file://$PROJECT_DIR$/initd.iml" filepath="$PROJECT_DIR$/initd.iml" />
+      <module fileurl="file://C:\Users\Draco\Documents\GitHub\DFW\dfw.iml" filepath="C:\Users\Draco\Documents\GitHub\DFW\dfw.iml" />
     </modules>
   </component>
 </project>
