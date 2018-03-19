@@ -47,6 +47,11 @@ class Exec : BroadcastReceiver() {
 
             var pname = intent.`package`
             if (intent.`package` == null) pname = "Shell"
+            if (!_permission.status(pname)) {
+                resultCode = RESULT_ERROR
+                resultData = "RUNTIME PERMISSION NOT GRANTED\n" +
+                        "Please see \"permission\" action."
+            }
             //_permission.grant(pname)
 
             // check permissions and deliver warning
