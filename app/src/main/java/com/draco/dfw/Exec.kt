@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.util.Log
+import com.draco.dfw.commands.animation
 import com.draco.dfw.commands.immersive
+import com.draco.dfw.commands.permission
 import com.draco.dfw.commands.settings
 import kotlin.concurrent.thread
 
@@ -23,6 +25,8 @@ class Exec : BroadcastReceiver() {
     private lateinit var _wm: wm
     private lateinit var _immersive: immersive
     private lateinit var _settings: settings
+    private lateinit var _animation: animation
+    private lateinit var _permission: permission
     private lateinit var prefs: SharedPreferences
     private lateinit var editor: SharedPreferences.Editor
 
@@ -30,17 +34,20 @@ class Exec : BroadcastReceiver() {
         Log.d("BroadcastReceived", intent.action)
 
         val result = goAsync()
-        thread {
+        val runnable = Runnable {
             prefs = context.getSharedPreferences("perms", Context.MODE_PRIVATE)
             editor = prefs.edit()
-            var pname = intent.`package`
-            if (intent.`package` == null) pname = "Shell"
-            if (!prefs.getBoolean(pname, false)) permissionDialog(context, intent, pname)
 
             // set primary command classes
             _immersive = immersive(context.contentResolver)
             _wm = wm()
             _settings = settings(context.contentResolver)
+            _animation = animation(context.contentResolver)
+            _permission = permission(context)
+
+            var pname = intent.`package`
+            if (intent.`package` == null) pname = "Shell"
+            //_permission.grant(pname)
 
             // check permissions and deliver warning
             val ungrantedPerms = Permissions.check(context, context.packageManager)
@@ -49,7 +56,7 @@ class Exec : BroadcastReceiver() {
                 result.resultCode = RESULT_ERROR
                 result.resultData = "MISSING PERMISSIONS: " + ungrantedPerms.toString()
                 result.finish()
-                return@thread
+                return@Runnable
             }
 
             // show command help
@@ -58,12 +65,14 @@ class Exec : BroadcastReceiver() {
                     "wm" -> _wm.help()
                     "immersive" -> _immersive.help()
                     "settings" -> _settings.help()
+                    "animation" -> _animation.help()
+                    "permission" -> _permission.help()
                     else -> ""
                 }
 
                 result.resultCode = RESULT_NEUTRAL
                 result.finish()
-                return@thread
+                return@Runnable
             }
 
             // grab all possible parameters
@@ -75,6 +84,9 @@ class Exec : BroadcastReceiver() {
             val extraPut = intent.extras.getString(EXTRA_PUT)
             val extraGet = intent.extras.getString(EXTRA_GET)
             val extraValue = intent.extras.getString(EXTRA_VALUE)
+            val extraStatus = intent.extras.getString(EXTRA_STATUS)
+            val extraGrant = intent.extras.getString(EXTRA_GRANT)
+            val extraRevoke = intent.extras.getString(EXTRA_REVOKE)
 
             // check primary function
             if (intent.action == "wm") {
@@ -109,7 +121,11 @@ class Exec : BroadcastReceiver() {
                     _settings.namespace(extraNamespace)
                 }
 
-                if (extraPut != null && extraValue != null) {
+                if (extraValue == null) {
+                    result.finish()
+                }
+
+                if (extraPut != null) {
                     _settings.put(extraPut, extraValue)
                     result.resultCode = RESULT_OK
                 } else if (extraGet != null) {
@@ -118,22 +134,54 @@ class Exec : BroadcastReceiver() {
                 }
             }
 
+            if (intent.action == "animation") {
+                if (extraType != null) {
+                    _animation.type(extraType)
+                    result.resultCode = RESULT_NEUTRAL
+                }
+
+                if (extraValue == null) {
+                    result.finish()
+                }
+
+                if (extraType == ANIMATION_WINDOW) {
+                    _animation.window(extraValue.toFloat())
+                    result.resultCode = RESULT_OK
+                }
+
+                if (extraType == ANIMATION_TRANSITION) {
+                    _animation.transition(extraValue.toFloat())
+                    result.resultCode = RESULT_OK
+                }
+
+                if (extraType == ANIMATION_ANIMATOR) {
+                    _animation.animator(extraValue.toFloat())
+                    result.resultCode = RESULT_OK
+                }
+            }
+
+            if (intent.action == "permission") {
+                if (extraGrant != null) {
+                    _permission.grant(extraGrant)
+                    result.resultCode = RESULT_OK
+                }
+
+                if (extraRevoke != null) {
+                    _permission.revoke(extraRevoke)
+                    result.resultCode = RESULT_OK
+                }
+
+                if (extraStatus != null) {
+                    _permission.status(extraStatus)
+                    result.resultCode = RESULT_OK
+                }
+            }
+
             result.finish()
         }
-
-    }
-
-    private fun permissionDialog(context: Context, intent: Intent, pname: String) {
-        val i = Intent(context, PermissionDialog::class.java).apply {
-            putExtra("message", "$pname has requested runtime.")
+        thread {
+            runnable.run()
         }
-        context.startActivity(i)
 
-        while (permissionGranted == null) { }
-        permissionGranted = null
-        if (permissionGranted == false) return
-        editor.putBoolean(pname, true)
-        editor.apply()
-        Log.d("PERMISSION", "GRANTED")
     }
 }
